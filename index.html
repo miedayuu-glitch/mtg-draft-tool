@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MTG Draft & Play Assistant (SOS)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: rgba(30, 41, 59, 0.6);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #8b5cf6;
+            --accent-hover: #a78bfa;
+            --danger: #ef4444;
+            --success: #10b981;
+            
+            --mana-W: #f8f6d8;
+            --mana-U: #c1d8e9;
+            --mana-B: #bab1ab;
+            --mana-R: #f9aa8f;
+            --mana-G: #9bd3ae;
+            --mana-C: #cccccc;
+            
+            --common: #b0bec5;
+            --uncommon: #90caf9;
+            --rare: #ffe082;
+            --mythic: #ffab91;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            background-image: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+            background-attachment: fixed;
+            padding-bottom: 80px; /* For bottom nav */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        h1, h2, h3 {
+            margin-top: 0;
+            font-weight: 800;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(to right, #a78bfa, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Form Controls */
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        @media (min-width: 600px) {
+            .btn-primary { width: auto; }
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #334155;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Toolbar Layout */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .tool-group {
+            flex: 1 1 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .checkbox-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+            z-index: 1000;
+        }
+        .nav-item {
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            flex: 1;
+        }
+        .nav-item.active {
+            color: var(--accent);
+        }
+        .nav-icon {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+
+        /* View Switching */
+        .view { display: none; animation: fadeIn 0.3s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Mana Checker Specific --- */
+        .mana-counters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .mana-counter {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .mana-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: #0f172a;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .bg-W { background-color: var(--mana-W); }
+        .bg-U { background-color: var(--mana-U); }
+        .bg-B { background-color: var(--mana-B); }
+        .bg-R { background-color: var(--mana-R); }
+        .bg-G { background-color: var(--mana-G); }
+        .bg-C { background-color: var(--mana-C); }
+
+        .mana-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 4px;
+        }
+        .mana-controls button {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-panel);
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mana-controls button:active { background: var(--accent); }
+        .mana-count {
+            font-size: 1.4rem;
+            font-weight: 800;
+            width: 24px;
+            text-align: center;
+        }
+
+        .total-mana {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(15,23,42,0.8);
+            border-radius: 12px;
+            margin-top: 15px;
+            border-left: 4px solid var(--accent);
+        }
+        .total-mana-val { font-size: 1.8rem; color: var(--accent); font-weight: 800; }
+
+        .rarity-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin: 30px 0 15px 0;
+            padding-left: 10px;
+            border-left: 4px solid;
+        }
+        .title-common { border-color: var(--common); color: var(--common); }
+        .title-uncommon { border-color: var(--uncommon); color: var(--uncommon); }
+        .title-rare { border-color: var(--rare); color: var(--rare); }
+        .title-mythic { border-color: var(--mythic); color: var(--mythic); }
+
+        /* --- Draft Assistant & Shared Grid --- */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px 10px;
+        }
+        @media (min-width: 768px) {
+            .cards-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        }
+        .card {
+            position: relative;
+            border-radius: 4.75% / 3.5%;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover {
+            transform: scale(1.05) translateY(-5px);
+            z-index: 10;
+        }
+        .card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: inherit;
+        }
+        
+        .badge-rank {
+            position: absolute;
+            top: -8px; left: -8px;
+            background-color: var(--danger);
+            color: white;
+            font-weight: 800;
+            font-size: 1rem;
+            width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            border: 2px solid white;
+            z-index: 2;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .badge-gihwr {
+            position: absolute;
+            bottom: 6%; left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(15, 23, 42, 0.9);
+            font-weight: 800;
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            z-index: 2;
+            white-space: nowrap;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .badge-ata {
+            position: absolute;
+            top: 6px; right: 6px;
+            background-color: rgba(15, 23, 42, 0.85);
+            color: #cbd5e1;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 6px;
+            border-radius: 6px;
+            z-index: 2;
+        }
+        
+        .badge-bomb {
+            position: absolute;
+            top: -10px; left: 26px;
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            border: 2px solid white;
+            z-index: 3;
+            font-size: 1.1rem;
+        }
+        .badge-bomb.rank-s {
+            background-color: #ff3838;
+            color: white;
+            font-weight: 800;
+            box-shadow: 0 0 10px rgba(255, 56, 56, 0.8), 0 2px 8px rgba(0,0,0,0.5);
+        }
+        /*
+        .badge-bomb.rank-a {
+            background-color: #ff9f43;
+            color: white;
+            font-weight: 800;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        */
+
+        .empty-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            background: var(--bg-panel);
+            border-radius: 12px;
+            border: 1px dashed var(--border-color);
+            grid-column: 1 / -1;
+        }
+
+        /* --- Cheat Sheet Specific --- */
+        .guide-container { display: flex; flex-wrap: wrap; gap: 20px; }
+        .guide-section { flex: 1 1 minmax(300px, 1fr); }
+        .guide-section h2 {
+            color: var(--accent);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        .guide-section h3 {
+            color: #38bdf8;
+            font-size: 1.1rem;
+            margin-top: 25px;
+        }
+        .guide-section ul { padding-left: 20px; margin-top: 5px; }
+        .guide-section li { margin-bottom: 8px; color: var(--text-main); }
+        .highlight { color: #f472b6; font-weight: bold; }
+        .mechanic { color: #818cf8; font-weight: bold; }
+        
+        .guild-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+        }
+        .guild-card h4 { margin: 0 0 5px 0; font-size: 1rem; }
+        .guild-card p { margin: 0; font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; }
+        .guild-BW { border-color: #d3d3d3; } .guild-BW h4 { color: #d3d3d3; }
+        .guild-RW { border-color: #ffcc80; } .guild-RW h4 { color: #ffcc80; }
+        .guild-GU { border-color: #81c784; } .guild-GU h4 { color: #81c784; }
+        .guild-UR { border-color: #64b5f6; } .guild-UR h4 { color: #64b5f6; }
+        .guild-BG { border-color: #aed581; } .guild-BG h4 { color: #aed581; }
+        .guild-5C { border-color: #ffd54f; } .guild-5C h4 { color: #ffd54f; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: left; }
+        th { background: rgba(255,255,255,0.05); color: var(--accent); }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- View 1: Draft Assistant -->
+        <div id="view-draft" class="view active">
+            <h1>ピック支援ダッシュボード</h1>
+            <div class="glass-panel">
+                <div class="toolbar">
+                    <div class="tool-group">
+                        <label>フォーマット</label>
+                        <select id="draftFormat">
+                            <option value="PremierDraft">プレミアドラフト</option>
+                            <option value="QuickDraft">クイックドラフト</option>
+                        </select>
+                    </div>
+                    <div class="tool-group">
+                        <label>アーキタイプ</label>
+                        <select id="draftArchetype">
+                            <option value="ALL">すべて表示</option>
+                            <option value="BW">シルバークイル (白黒)</option>
+                            <option value="RW">ロアホールド (赤白)</option>
+                            <option value="GU">クアンドリクス (緑青)</option>
+                            <option value="UR">プリズマリ (青赤)</option>
+                            <option value="BG">ウィザーブルーム (黒緑)</option>
+                        </select>
+                    </div>
+                    <div class="tool-group" style="flex: 2 1 300px;">
+                        <label>レアリティ</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label"><input type="checkbox" class="draft-rarity" value="common" checked> コモン</label>
+                            <label class="checkbox-label"><input type="checkbox" class="draft-rarity" value="uncommon" checked> アンコモン</label>
+                            <label class="checkbox-label"><input type="checkbox" class="draft-rarity" value="rare_mythic" checked> レア/神話</label>
+                        </div>
+                    </div>
+                    <div class="tool-group" style="flex: 1 1 100%; align-items: flex-end;">
+                        <button class="btn-primary" id="draftFetchBtn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+                            データを取得・更新
+                        </button>
+                    </div>
+                </div>
+                <div id="draftStatus" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 10px; text-align: right;">※SOSセット固定</div>
+            </div>
+            
+            <div id="draftGrid" class="cards-grid">
+                <div class="empty-message">「データを取得・更新」を押してカード評価を読み込んでください。</div>
+            </div>
+        </div>
+
+        <!-- View 2: Mana Checker -->
+        <div id="view-mana" class="view">
+            <h1>厳密警戒カードチェッカー</h1>
+            <div class="glass-panel">
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0;">相手の色マナ残量から、マナシンボルを厳密に計算し、本当に撃てるインスタント・瞬速を表示します。</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <button class="btn-primary" id="manaFetchBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+                        警戒データを取得 (SOS)
+                    </button>
+                    <div id="manaStatus" style="color: var(--text-muted); font-size: 0.9rem;">(初回のみ必須)</div>
+                </div>
+            </div>
+
+            <div class="glass-panel" id="manaSearchPanel" style="opacity: 0.5; pointer-events: none; transition: 0.3s;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>相手のアンタップマナ</h2>
+                    <button id="manaResetBtn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 12px; border-radius: 6px; cursor: pointer;">リセット</button>
+                </div>
+                
+                <div class="mana-counters-grid">
+                    <div class="mana-counter"><div class="mana-icon bg-W">W</div><div class="mana-controls"><button onclick="updateMana('W', -1)">-</button><span class="mana-count" id="count-W">0</span><button onclick="updateMana('W', 1)">+</button></div></div>
+                    <div class="mana-counter"><div class="mana-icon bg-U">U</div><div class="mana-controls"><button onclick="updateMana('U', -1)">-</button><span class="mana-count" id="count-U">0</span><button onclick="updateMana('U', 1)">+</button></div></div>
+                    <div class="mana-counter"><div class="mana-icon bg-B">B</div><div class="mana-controls"><button onclick="updateMana('B', -1)">-</button><span class="mana-count" id="count-B">0</span><button onclick="updateMana('B', 1)">+</button></div></div>
+                    <div class="mana-counter"><div class="mana-icon bg-R">R</div><div class="mana-controls"><button onclick="updateMana('R', -1)">-</button><span class="mana-count" id="count-R">0</span><button onclick="updateMana('R', 1)">+</button></div></div>
+                    <div class="mana-counter"><div class="mana-icon bg-G">G</div><div class="mana-controls"><button onclick="updateMana('G', -1)">-</button><span class="mana-count" id="count-G">0</span><button onclick="updateMana('G', 1)">+</button></div></div>
+                    <div class="mana-counter"><div class="mana-icon bg-C">C</div><div class="mana-controls"><button onclick="updateMana('C', -1)">-</button><span class="mana-count" id="count-C">0</span><button onclick="updateMana('C', 1)">+</button></div></div>
+                </div>
+
+                <div class="total-mana">
+                    合計マナ: <span class="total-mana-val" id="totalManaDisplay">0</span>
+                </div>
+            </div>
+
+            <div id="manaResults">
+                <div class="empty-message">マナ状況を入力すると、ここに警戒すべきカードが表示されます。</div>
+            </div>
+        </div>
+
+
+
+        <!-- View 4: Guide / Cheat Sheet -->
+        <div id="view-guide" class="view">
+            <h1>環境カンニングペーパー</h1>
+            <div class="guide-container">
+                <div class="guide-section glass-panel">
+                    <h2>1. ドラフトの基本セオリー</h2>
+                    <h3>デッキの黄金比（40枚）とSOS環境</h3>
+                    <ul>
+                        <li>土地：<span class="highlight">17枚</span>（2色なら各色9枚ずつ）</li>
+                        <li>クリーチャー：<span class="highlight">15枚前後</span>（準備クリーチャーで呪文枠兼用可）</li>
+                        <li>呪文（除去・強化等）：<span class="highlight">8枚前後</span></li>
+                    </ul>
+
+                    <h3>黄金のマナカーブと速度</h3>
+                    <p>SOSは「1マナトリックが優秀・除去が重め」のため<span class="highlight">アグロ環境</span>になりやすいです。</p>
+                    <table>
+                        <tr><th>コスト</th><th>理想枚数</th><th>役割</th></tr>
+                        <tr><td>1マナ</td><td>1〜3枚</td><td>優秀なトリック・軽量生物</td></tr>
+                        <tr><td>2マナ</td><td><span class="highlight">6〜8枚</span></td><td>序盤の要。最重要</td></tr>
+                        <tr><td>3マナ</td><td>4〜5枚</td><td>中盤の主力</td></tr>
+                        <tr><td>4マナ</td><td>2〜4枚</td><td>攻防の要</td></tr>
+                        <tr><td>5マナ+</td><td>1〜2枚</td><td>フィニッシャー</td></tr>
+                    </table>
+                </div>
+
+                <div class="guide-section glass-panel">
+                    <h2>2. SOS メカニズム解説</h2>
+                    <h3>キーワード能力</h3>
+                    <ul>
+                        <li><span class="mechanic">準備：</span>準備済から内蔵呪文のコピーを唱える。</li>
+                        <li><span class="mechanic">範例：</span>解決時に追放し、以降の毎ターンの第1メイン開始時にコピーをタダで唱える遅延誘発。</li>
+                        <li><span class="mechanic">フラッシュバック：</span>墓地から呪文を再利用。</li>
+                    </ul>
+
+                    <h3>アーキタイプ（大学）の能力語</h3>
+                    <div class="guild-card guild-BW"><h4>シルバークイル（白黒）/ 即妙</h4><p>自軍を対象にインスタントやソーサリーを唱えるたび誘発。</p></div>
+                    <div class="guild-card guild-UR"><h4>プリズマリ（青赤）/ 演目</h4><p>インスタント・ソーサリーを唱えた時、5マナ以上支払っていれば追加ボーナス。</p></div>
+                    <div class="guild-card guild-BG"><h4>ウィザーブルーム（黒緑）/ 注入</h4><p>このターンにライフを得ていたかを参照するライフゲイン軸。</p></div>
+                    <div class="guild-card guild-GU"><h4>クアンドリクス（緑青）/ 増分</h4><p>支払ったマナが対象クリーチャーのP/Tより大きいなら+1/+1カウンター。</p></div>
+                    <div class="guild-card guild-RW"><h4>ロアホールド（赤白）/ 墓地利用</h4><p>カードが墓地を離れた時（フラッシュバック等）にアドバンテージを得る。</p></div>
+                    <div class="guild-card guild-5C"><h4>アルカイック（5色）/ 収斂</h4><p>支払われた「マナの色の種類数」で効果がスケーリングするランプ。</p></div>
+                </div>
+
+                <div class="guide-section glass-panel" style="flex-basis: 100%;">
+                    <h2>3. ピック運用ルール (ボム基準)</h2>
+                    
+                    <h3>【P1P1】</h3>
+                    <ul>
+                        <li><span class="highlight">黒白にS or Aあり</span> → 黒白を取る（最優先）</li>
+                        <li><span class="highlight">黒白にマークなし + 赤白 or 黒緑にSあり</span> → 色を曲げる</li>
+                        <li><span class="highlight">黒白にマークなし + 他色にAのみ</span> → 黒白の最良カードを取る（曲げない）</li>
+                        <li><span class="highlight">全てマークなし</span> → 黒白の最良カードを取る</li>
+                    </ul>
+
+                    <h3>【P1P2】</h3>
+                    <ul>
+                        <li><span class="highlight">P1P1で黒白を取った場合</span> → 黒白継続</li>
+                        <li><span class="highlight">P1P1で他色を取った場合:</span>
+                            <ul>
+                                <li><strong>黒白Sあり</strong> → 黒白に戻る（P1P1ボム捨てる）</li>
+                                <li><strong>黒白Aのみ</strong> → P1P1の色を継続</li>
+                                <li><strong>黒白マークなし</strong> → P1P1の色を継続</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h3>【P1P3以降】</h3>
+                    <ul>
+                        <li><span class="highlight">P1P1で黒白の場合</span>: 黒白を深堀り</li>
+                        <li><span class="highlight">P1P1で他色の場合</span>: P1P2の判断結果を維持、揺り戻さない</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-target="view-draft" onclick="switchTab('view-draft')">
+            <div class="nav-icon">📊</div>
+            <div>ピック支援</div>
+        </div>
+        <div class="nav-item" data-target="view-mana" onclick="switchTab('view-mana')">
+            <div class="nav-icon">⚔️</div>
+            <div>マナチェッカー</div>
+        </div>
+
+        <div class="nav-item" data-target="view-guide" onclick="switchTab('view-guide')">
+            <div class="nav-icon">📖</div>
+            <div>カンペ</div>
+        </div>
+    </nav>
+
+    <script>
+        // --- Shared Constants ---
+        const SET_CODE = "sos";
+        let globalScryfallDict = null; // Share Scryfall cache if possible
+
+        // --- Navigation Logic ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[data-target="${tabId}"]`).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        // --- Utility: Fetch Scryfall ---
+        async function fetchScryfallData(query) {
+            const dict = {};
+            let url = `https://api.scryfall.com/cards/search?q=${query}+lang:ja`;
+            
+            // Phase 1: Japanese
+            await _scryfallLoop(url, dict);
+            // Phase 2: English fallback
+            url = `https://api.scryfall.com/cards/search?q=${query}`;
+            await _scryfallLoop(url, dict);
+            
+            return dict;
+        }
+
+        async function _scryfallLoop(url, dict) {
+            while (url) {
+                const res = await fetch(url);
+                if (!res.ok) break;
+                const json = await res.json();
+                
+                for (let card of json.data) {
+                    let img = null;
+                    if (card.image_uris && card.image_uris.normal) {
+                        img = card.image_uris.normal;
+                    } else if (card.card_faces && card.card_faces[0].image_uris) {
+                        img = card.card_faces[0].image_uris.normal;
+                    }
+                    
+                    const cardData = {
+                        imageUrl: img,
+                        jpName: card.printed_name || card.name,
+                        colorIdentity: card.color_identity || [],
+                        rarity: card.rarity,
+                        cmc: card.cmc || 0,
+                        rawCard: card // Store full object for mana checker
+                    };
+
+                    if (!dict[card.name] || (!dict[card.name].imageUrl && img)) {
+                        if (dict[card.name]) dict[card.name].imageUrl = img;
+                        else dict[card.name] = { ...cardData };
+                    }
+                    
+                    const frontName = card.name.split(' // ')[0];
+                    if (!dict[frontName] || (!dict[frontName].imageUrl && img)) {
+                        if (dict[frontName]) dict[frontName].imageUrl = img;
+                        else dict[frontName] = { ...cardData };
+                    }
+                }
+                
+                if (json.has_more) {
+                    url = json.next_page;
+                    await new Promise(r => setTimeout(r, 100)); // Rate limit
+                } else break;
+            }
+        }
+
+        // ==========================================
+        // App 1: Draft Assistant Logic
+        // ==========================================
+        let currentLands17Data = [];
+        let isDraftFetched = false;
+        
+        const draftFetchBtn = document.getElementById('draftFetchBtn');
+        const draftStatus = document.getElementById('draftStatus');
+        const draftGrid = document.getElementById('draftGrid');
+        const draftFormatSel = document.getElementById('draftFormat');
+        const draftArchSel = document.getElementById('draftArchetype');
+        const draftRarities = document.querySelectorAll('.draft-rarity');
+
+        draftFetchBtn.addEventListener('click', fetchDraftData);
+        draftArchSel.addEventListener('change', renderDraftCards);
+        draftRarities.forEach(chk => chk.addEventListener('change', renderDraftCards));
+        draftFormatSel.addEventListener('change', () => { if (isDraftFetched) fetchDraftData(); });
+
+        const ARCHETYPE_COLORS = { "BW": ["B", "W"], "RW": ["R", "W"], "GU": ["G", "U"], "UR": ["U", "R"], "BG": ["B", "G"] };
+
+        async function fetchDraftData() {
+            const format = draftFormatSel.value;
+            draftFetchBtn.disabled = true;
+            
+            try {
+                if (!globalScryfallDict) {
+                    draftStatus.textContent = "Scryfallから画像をロード中...";
+                    draftStatus.style.color = "var(--accent)";
+                    globalScryfallDict = await fetchScryfallData(`set:${SET_CODE}`);
+                }
+
+                draftStatus.textContent = `17Landsデータを取得中...`;
+                const landsUrl = `https://www.17lands.com/card_ratings/data?expansion=${SET_CODE.toUpperCase()}&format=${format}`;
+                const response = await fetch(landsUrl);
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                
+                let data = await response.json();
+                data = data.filter(d => d.drawn_win_rate !== null && d.drawn_win_rate !== undefined);
+                if (data.length === 0) throw new Error("勝率データが見つかりません");
+
+                currentLands17Data = data;
+                isDraftFetched = true;
+
+                draftStatus.textContent = `完了 (${data.length}枚)`;
+                draftStatus.style.color = "var(--success)";
+                renderDraftCards();
+            } catch (err) {
+                draftStatus.textContent = `エラー: ${err.message}`;
+                draftStatus.style.color = "var(--danger)";
+            } finally {
+                draftFetchBtn.disabled = false;
+            }
+        }
+
+        function renderDraftCards() {
+            if (currentLands17Data.length === 0) return;
+            const archFilter = draftArchSel.value;
+            const scryfallDict = globalScryfallDict || {};
+            const selectedRarities = Array.from(draftRarities).filter(c => c.checked).map(c => c.value);
+
+            let displayCards = currentLands17Data.map(stat => {
+                const sCard = scryfallDict[stat.name] || scryfallDict[stat.name.split(' // ')[0]];
+                return {
+                    name: stat.name,
+                    jpName: sCard ? sCard.jpName : stat.name,
+                    imageUrl: (sCard && sCard.imageUrl) ? sCard.imageUrl : stat.url,
+                    colorIdentity: sCard ? sCard.colorIdentity : (stat.color ? stat.color.split('') : []),
+                    rarity: stat.rarity.toLowerCase(),
+                    gihwr: stat.drawn_win_rate,
+                    ata: stat.avg_pick,
+                    gameCount: stat.drawn_game_count
+                };
+            }).filter(card => {
+                if (selectedRarities.length === 0) return false;
+                let matchesRarity = false;
+                if (selectedRarities.includes("common") && card.rarity === "common") matchesRarity = true;
+                if (selectedRarities.includes("uncommon") && card.rarity === "uncommon") matchesRarity = true;
+                if (selectedRarities.includes("rare_mythic") && (card.rarity === "rare" || card.rarity === "mythic")) matchesRarity = true;
+                if (!matchesRarity) return false;
+
+                if (archFilter !== "ALL") {
+                    const allowed = ARCHETYPE_COLORS[archFilter];
+                    for (let c of card.colorIdentity) { if (!allowed.includes(c)) return false; }
+                }
+                if (card.gameCount < 100) return false;
+                return true;
+            });
+
+            displayCards.sort((a, b) => b.gihwr - a.gihwr);
+            draftGrid.innerHTML = "";
+            
+            if (displayCards.length === 0) {
+                draftGrid.innerHTML = `<div class="empty-message">条件に一致するカードがありません。</div>`;
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            displayCards.forEach((card, index) => {
+                const el = document.createElement('div');
+                el.className = 'card';
+                
+                const rankBadge = document.createElement('div');
+                rankBadge.className = 'badge-rank';
+                rankBadge.textContent = index + 1;
+                el.appendChild(rankBadge);
+
+                let bombMark = null;
+                if (card.rarity === "rare" || card.rarity === "mythic") {
+                    if (card.gihwr >= 0.62) bombMark = "S";
+                }
+
+                if (bombMark) {
+                    const bombBadge = document.createElement('div');
+                    bombBadge.className = `badge-bomb rank-${bombMark.toLowerCase()}`;
+                    bombBadge.textContent = bombMark;
+                    el.appendChild(bombBadge);
+                }
+
+
+                if (card.ata) {
+                    const ataBadge = document.createElement('div');
+                    ataBadge.className = 'badge-ata';
+                    ataBadge.textContent = `ATA: ${card.ata.toFixed(1)}`;
+                    el.appendChild(ataBadge);
+                }
+
+                const wrBadge = document.createElement('div');
+                wrBadge.className = 'badge-gihwr';
+                const wrPercent = (card.gihwr * 100).toFixed(1);
+                if (card.gihwr >= 0.60) wrBadge.style.color = "#00e676";
+                else if (card.gihwr >= 0.55) wrBadge.style.color = "#69f0ae";
+                else if (card.gihwr >= 0.50) wrBadge.style.color = "#ffffff";
+                else wrBadge.style.color = "#ff8a80";
+                wrBadge.textContent = `${wrPercent}%`;
+                el.appendChild(wrBadge);
+
+                if (card.imageUrl) {
+                    const img = document.createElement('img');
+                    img.src = card.imageUrl;
+                    img.alt = card.jpName;
+                    img.loading = "lazy";
+                    el.appendChild(img);
+                }
+                fragment.appendChild(el);
+            });
+            draftGrid.appendChild(fragment);
+        }
+
+        // ==========================================
+        // App 2: Mana Checker Logic
+        // ==========================================
+        let manaCheckCards = [];
+        const manaPool = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+        const manaFetchBtn = document.getElementById('manaFetchBtn');
+        const manaStatus = document.getElementById('manaStatus');
+        const manaSearchPanel = document.getElementById('manaSearchPanel');
+        const manaResults = document.getElementById('manaResults');
+
+        function updateMana(color, delta) {
+            if (manaPool[color] + delta >= 0) {
+                manaPool[color] += delta;
+                document.getElementById(`count-${color}`).textContent = manaPool[color];
+                const total = manaPool.W + manaPool.U + manaPool.B + manaPool.R + manaPool.G + manaPool.C;
+                document.getElementById('totalManaDisplay').textContent = total;
+                renderManaResults();
+            }
+        }
+
+        document.getElementById('manaResetBtn').addEventListener('click', () => {
+            ['W', 'U', 'B', 'R', 'G', 'C'].forEach(c => { manaPool[c] = 0; document.getElementById(`count-${c}`).textContent = 0; });
+            document.getElementById('totalManaDisplay').textContent = 0;
+            renderManaResults();
+        });
+
+        manaFetchBtn.addEventListener('click', async () => {
+            manaFetchBtn.disabled = true;
+            manaStatus.textContent = "取得中...";
+            manaStatus.style.color = "var(--accent)";
+            
+            try {
+                // If global dict isn't populated, do it (this ensures we have all JP data)
+                if (!globalScryfallDict) {
+                    globalScryfallDict = await fetchScryfallData(`set:${SET_CODE}`);
+                }
+                
+                // For mana checker, we only want Instant/Flash.
+                // Filter the global dict to find valid cards.
+                manaCheckCards = [];
+                Object.values(globalScryfallDict).forEach(cardData => {
+                    const c = cardData.rawCard;
+                    if (!c) return;
+                    // Check if it's an instant or has flash. The type_line helps.
+                    const isInstantOrFlash = c.type_line && (c.type_line.toLowerCase().includes('instant') || (c.keywords && c.keywords.some(k => k.toLowerCase()==='flash')));
+                    if (isInstantOrFlash) {
+                        manaCheckCards.push(c);
+                    }
+                });
+                
+                // Fallback: if we somehow missed them, fetch specifically
+                if (manaCheckCards.length === 0) {
+                    const url = `https://api.scryfall.com/cards/search?q=set:${SET_CODE}+(t:instant+OR+kw:flash)`;
+                    const res = await fetch(url);
+                    const json = await res.json();
+                    manaCheckCards = json.data || [];
+                }
+
+                manaStatus.textContent = `完了 (対象: ${manaCheckCards.length}枚)`;
+                manaStatus.style.color = "var(--success)";
+                manaSearchPanel.style.opacity = "1";
+                manaSearchPanel.style.pointerEvents = "auto";
+                renderManaResults();
+            } catch(e) {
+                manaStatus.textContent = `エラー: ${e.message}`;
+                manaStatus.style.color = "var(--danger)";
+            } finally {
+                manaFetchBtn.disabled = false;
+            }
+        });
+
+        function canPay(costStr, currentPool) {
+            if (!costStr) return true;
+            const matches = [...costStr.matchAll(/{([^}]+)}/g)];
+            const symbols = matches.map(m => m[1].toUpperCase());
+            let genericCost = 0;
+            let choices = [];
+            for (let sym of symbols) {
+                if (sym === 'X' || sym === 'Y' || sym === 'Z') continue;
+                if (/^\d+$/.test(sym)) genericCost += parseInt(sym, 10);
+                else if (sym.includes('/')) {
+                    if (sym.includes('P')) choices.push([...sym.split('/').filter(c => c !== 'P'), 'FREE']);
+                    else choices.push(sym.split('/'));
+                } else choices.push([sym]); 
+            }
+            
+            function check(index, tempPool) {
+                if (index === choices.length) {
+                    const rem = tempPool.W + tempPool.U + tempPool.B + tempPool.R + tempPool.G + tempPool.C;
+                    return rem >= genericCost;
+                }
+                let symbolChoices = choices[index];
+                for (let choice of symbolChoices) {
+                    if (choice === 'FREE') { if (check(index + 1, tempPool)) return true; }
+                    else if (/^\d+$/.test(choice)) {
+                        const amt = parseInt(choice, 10);
+                        genericCost += amt;
+                        if (check(index + 1, tempPool)) { genericCost -= amt; return true; }
+                        genericCost -= amt;
+                    } else if (tempPool[choice] > 0) {
+                        tempPool[choice]--;
+                        if (check(index + 1, tempPool)) { tempPool[choice]++; return true; }
+                        tempPool[choice]++;
+                    }
+                }
+                return false;
+            }
+            return check(0, { ...currentPool });
+        }
+
+        function checkCardCastable(card, pool) {
+            if (card.card_faces && card.mana_cost && card.mana_cost.includes('//')) {
+                return canPay(card.card_faces[0].mana_cost, pool) || canPay(card.card_faces[1].mana_cost, pool);
+            } else if (card.card_faces && !card.mana_cost) {
+                return canPay(card.card_faces[0].mana_cost, pool) || (card.card_faces[1].mana_cost && canPay(card.card_faces[1].mana_cost, pool));
+            } else return canPay(card.mana_cost, pool);
+        }
+
+        function renderManaResults() {
+            if (manaCheckCards.length === 0) return;
+            const total = manaPool.W + manaPool.U + manaPool.B + manaPool.R + manaPool.G + manaPool.C;
+            if (total === 0) {
+                manaResults.innerHTML = '<div class="empty-message">マナ状況を入力すると警戒カードが表示されます。</div>';
+                return;
+            }
+
+            const possibleCards = manaCheckCards.filter(card => checkCardCastable(card, manaPool));
+            const rarityOrder = { "common": 1, "uncommon": 2, "rare": 3, "mythic": 4 };
+            possibleCards.sort((a, b) => {
+                const rA = rarityOrder[a.rarity] || 5;
+                const rB = rarityOrder[b.rarity] || 5;
+                if (rA !== rB) return rA - rB;
+                return (a.cmc || 0) - (b.cmc || 0);
+            });
+
+            manaResults.innerHTML = "";
+            if (possibleCards.length === 0) {
+                manaResults.innerHTML = '<div class="empty-message">撃てるカードはありません！安全です。</div>';
+                return;
+            }
+
+            let currentRarity = null;
+            let grid = null;
+
+            possibleCards.forEach(card => {
+                if (card.rarity !== currentRarity) {
+                    currentRarity = card.rarity;
+                    const container = document.createElement('div');
+                    const title = document.createElement('div');
+                    title.className = `rarity-title title-${currentRarity}`;
+                    const prob = currentRarity === 'common' ? '高確率 (コモン)' : currentRarity === 'uncommon' ? '中確率 (アンコモン)' : '低確率 (レア/神話)';
+                    title.textContent = `【${currentRarity.toUpperCase()}】 警戒度: ${prob}`;
+                    grid = document.createElement('div');
+                    grid.className = 'cards-grid';
+                    container.appendChild(title);
+                    container.appendChild(grid);
+                    manaResults.appendChild(container);
+                }
+
+                let imageUrl = "";
+                if (card.image_uris && card.image_uris.normal) imageUrl = card.image_uris.normal;
+                else if (card.card_faces && card.card_faces[0].image_uris) imageUrl = card.card_faces[0].image_uris.normal;
+                
+                const name = card.printed_name || card.name;
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                
+                if (imageUrl) {
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = name;
+                    img.loading = "lazy";
+                    cardEl.appendChild(img);
+                } else {
+                    const info = document.createElement('div');
+                    info.style.padding = "20px";
+                    info.innerHTML = `<strong>${name}</strong><br>${card.mana_cost || ""}`;
+                    cardEl.appendChild(info);
+                }
+                grid.appendChild(cardEl);
+            });
+        }
+
+
+    </script>
+</body>
+</html>
