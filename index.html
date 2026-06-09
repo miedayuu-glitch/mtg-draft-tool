@@ -516,13 +516,22 @@
             <h1>厳密警戒カードチェッカー</h1>
             <div class="glass-panel">
                 <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0;">相手の色マナ残量から、マナシンボルを厳密に計算し、本当に撃てるインスタント・瞬速を表示します。</p>
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <button class="btn-primary" id="manaFetchBtn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
-                        警戒データを取得
-                    </button>
-                    <div id="manaStatus" style="color: var(--text-muted); font-size: 0.9rem;">(初回のみ必須)</div>
+                <div class="toolbar">
+                    <div class="tool-group">
+                        <label>セット</label>
+                        <select id="manaSet">
+                            <option value="SOS">ストリクスヘイヴンの秘密 (SOS)</option>
+                            <option value="BLB">ブルームバロウ (BLB)</option>
+                        </select>
+                    </div>
+                    <div class="tool-group" style="flex: 1 1 100%; align-items: flex-end;">
+                        <button class="btn-primary" id="manaFetchBtn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+                            警戒データを取得
+                        </button>
+                    </div>
                 </div>
+                <div id="manaStatus" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 10px; text-align: right;">(初回のみ必須)</div>
             </div>
 
             <div class="glass-panel" id="manaSearchPanel" style="opacity: 0.5; pointer-events: none; transition: 0.3s;">
@@ -650,6 +659,29 @@
         let scryfallCache = {}; // Keyed by set code
         function getSetCode() { return document.getElementById('draftSet').value.toUpperCase(); }
 
+        const SET_RELEASE_DATES = {
+            "SOS": "2025-04-11",
+            "TMT": "2025-03-14",
+            "ECL": "2025-02-14",
+            "TLA": "2025-01-17",
+            "SPM": "2024-11-15",
+            "EOE": "2024-10-18",
+            "FIN": "2024-10-18",
+            "TDM": "2025-05-09",
+            "DFT": "2024-09-13",
+            "FDN": "2024-11-15",
+            "DSK": "2024-09-27",
+            "BLB": "2024-08-02",
+            "OTJ": "2024-04-19",
+            "MKM": "2024-02-09",
+            "LCI": "2023-11-17",
+            "WOE": "2023-09-08",
+        };
+
+        function getStartDate(setCode) {
+            return SET_RELEASE_DATES[setCode] || "2023-01-01";
+        }
+
         // --- Navigation Logic ---
         function switchTab(tabId) {
             document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -753,7 +785,8 @@
                 if (fetchKey !== lastFetchKey) {
                     draftStatus.textContent = `17Landsデータを取得中...`;
                     draftStatus.style.color = "var(--accent)";
-                    let landsUrl = `https://www.17lands.com/card_ratings/data?expansion=${setCode}&format=${format}`;
+
+                    let landsUrl = `https://www.17lands.com/card_ratings/data?expansion=${setCode}&format=${format}&start_date=${getStartDate(setCode)}&end_date=${new Date().toISOString().slice(0, 10)}`;
                     if (archFilter !== "ALL") {
                         landsUrl += `&colors=${archFilter}`;
                     }
@@ -762,7 +795,7 @@
 
                     let data = await response.json();
                     data = data.filter(d => d.ever_drawn_win_rate !== null && d.ever_drawn_win_rate !== undefined);
-                    if (data.length === 0) throw new Error("勝率データが見つかりません");
+                    if (data.length === 0) throw new Error("このフォーマットのデータは17landsに存在しません。プレミアドラフトをお試しください。");
 
                     currentLands17Data = data;
                     lastFetchKey = fetchKey;
@@ -900,13 +933,11 @@
             
             try {
                 // If global dict isn't populated, do it (this ensures we have all JP data)
-                const setCode = getSetCode();
+                const setCode = document.getElementById('manaSet').value.toUpperCase();
                 if (!scryfallCache[setCode]) {
                     scryfallCache[setCode] = await fetchScryfallData(`set:${setCode.toLowerCase()}`);
                 }
-                
-                // For mana checker, we only want Instant/Flash.
-                // Filter the global dict to find valid cards.
+
                 manaCheckCards = [];
                 Object.values(scryfallCache[setCode]).forEach(cardData => {
                     const c = cardData.rawCard;
